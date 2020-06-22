@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.niu.middleware.fight.one.model.mapper.UserVipMapper" >
+  <resultMap id="BaseResultMap" type="com.niu.middleware.fight.one.model.entity.UserVip" >
+    <id column="id" property="id" jdbcType="INTEGER" />
+    <result column="name" property="name" jdbcType="VARCHAR" />
+    <result column="phone" property="phone" jdbcType="VARCHAR" />
+    <result column="email" property="email" jdbcType="VARCHAR" />
+    <result column="is_active" property="isActive" jdbcType="SMALLINT" />
+    <result column="vip_time" property="vipTime" jdbcType="TIMESTAMP" />
+    <result column="vip_day" property="vipDay" jdbcType="INTEGER" />
+    <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    id, name, phone, email, is_active, vip_time, vip_day, update_time
+  </sql>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
