@@ -9,6 +9,6 @@ import org.slf4j.LoggerFactory;
  * @Date 2020/6/22
  **/
 public class AbstractController {
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
 }

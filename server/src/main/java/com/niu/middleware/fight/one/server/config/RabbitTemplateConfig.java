@@ -100,4 +100,20 @@ public class RabbitTemplateConfig {
     public Binding logBinding() {
         return BindingBuilder.bind(logQueue()).to(logExchange()).with(env.getProperty("mq.log.routing.key"));
     }
+
+    // 预先创建交换机, 路由及其绑定
+    @Bean
+    public TopicExchange emailExchange() {
+        return new TopicExchange(env.getProperty("mq.email.exchange"), true, false);
+    }
+
+    @Bean
+    public Queue emailQueue() {
+        return new Queue(env.getProperty("mq.email.queue"), true);
+    }
+
+    @Bean
+    public Binding emailBinding() {
+        return BindingBuilder.bind(emailQueue()).to(emailExchange()).with(env.getProperty("mq.email.routing.key"));
+    }
 }
