@@ -25,3 +25,5 @@ Intermediate/
 Build/
 */Binaries/
 Binaries/
+
+*.properties
