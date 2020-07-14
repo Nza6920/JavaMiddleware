@@ -22,9 +22,9 @@ import org.springframework.core.env.Environment;
  * @Date 2020/6/26
  **/
 @Configuration
-public class RabbitTemplateConfig {
+public class RabbitConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(RabbitTemplateConfig.class);
+    private static final Logger log = LoggerFactory.getLogger(RabbitConfig.class);
 
     @Autowired
     private Environment env;
