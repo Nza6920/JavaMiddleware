@@ -11,6 +11,151 @@
   <sql id="Base_Column_List" >
     id, phone, code, is_active, send_time
   </sql>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Integer" >
+    select
+    <include refid="Base_Column_List" />
+    from send_record
+    where id = #{id,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer" >
+    delete from send_record
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" parameterType="com.niu.middleware.fight.one.model.entity.SendRecord" >
+    insert into send_record (id, phone, code, 
+      is_active, send_time)
+    values (#{id,jdbcType=INTEGER}, #{phone,jdbcType=VARCHAR}, #{code,jdbcType=VARCHAR}, 
+      #{isActive,jdbcType=TINYINT}, #{sendTime,jdbcType=TIMESTAMP})
+  </insert>
+  <insert id="insertSelective" parameterType="com.niu.middleware.fight.one.model.entity.SendRecord" >
+    insert into send_record
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        id,
+      </if>
+      <if test="phone != null" >
+        phone,
+      </if>
+      <if test="code != null" >
+        code,
+      </if>
+      <if test="isActive != null" >
+        is_active,
+      </if>
+      <if test="sendTime != null" >
+        send_time,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        #{id,jdbcType=INTEGER},
+      </if>
+      <if test="phone != null" >
+        #{phone,jdbcType=VARCHAR},
+      </if>
+      <if test="code != null" >
+        #{code,jdbcType=VARCHAR},
+      </if>
+      <if test="isActive != null" >
+        #{isActive,jdbcType=TINYINT},
+      </if>
+      <if test="sendTime != null" >
+        #{sendTime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.niu.middleware.fight.one.model.entity.SendRecord" >
+    update send_record
+    <set >
+      <if test="phone != null" >
+        phone = #{phone,jdbcType=VARCHAR},
+      </if>
+      <if test="code != null" >
+        code = #{code,jdbcType=VARCHAR},
+      </if>
+      <if test="isActive != null" >
+        is_active = #{isActive,jdbcType=TINYINT},
+      </if>
+      <if test="sendTime != null" >
+        send_time = #{sendTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.niu.middleware.fight.one.model.entity.SendRecord" >
+    update send_record
+    set phone = #{phone,jdbcType=VARCHAR},
+      code = #{code,jdbcType=VARCHAR},
+      is_active = #{isActive,jdbcType=TINYINT},
+      send_time = #{sendTime,jdbcType=TIMESTAMP}
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+
+
+  <!--根据手机号和验证码查询；验证码可以没有->比如同个手机号多次申请的情况下，如果该手机号存在30min内有效的验证码，
+  则直接取出发给他即可，而无需重新申请 -->
+  <select id="selectByPhoneCode" resultType="com.niu.middleware.fight.one.model.entity.SendRecord">
+    SELECT
+    <include refid="Base_Column_List"/>
+    FROM
+    send_record
+    WHERE
+    is_active = 1
+    AND phone = #{phone}
+
+    <if test="code!=null and code!=''">
+      AND `code` = #{code}
+    </if>
+    AND <![CDATA[     DATE_ADD(NOW(), INTERVAL - 30 MINUTE) <= send_time     ]]>
+    ORDER BY
+    send_time DESC
+    LIMIT 1
+  </select>
+
+  <!--查询早已超时的验证码记录-->
+  <select id="selectTimeoutCodes" resultType="com.niu.middleware.fight.one.model.entity.SendRecord">
+    SELECT
+        *
+    FROM
+        send_record
+    WHERE
+        is_active = 1
+    AND <![CDATA[ DATE_ADD(NOW(), INTERVAL - 30 MINUTE) > send_time ]]>
+    ORDER BY
+        send_time ASC
+  </select>
+
+  <!--更新已经超时的验证码记录为无效-->
+  <update id="updateTimeoutCode">
+    UPDATE send_record SET is_active=0
+    WHERE
+        is_active = 1  AND <![CDATA[ DATE_ADD(NOW(), INTERVAL - 30 MINUTE) >= send_time ]]>
+    AND id IN (${ids})
+  </update>
+
+
+  <!--查询所有有效且没超时的的验证码，用于跟缓存做对比，查看是否已过期(过期的判断在于 hasKey，即如果缓存中没有了该Key，
+  那说明该验证码已超过过期时间，自动失效了，此时我们需要更新数据库该记录)-->
+  <select id="selectAllActiveCodes" resultType="com.niu.middleware.fight.one.model.entity.SendRecord">
+    SELECT
+        *
+    FROM
+        send_record
+    WHERE
+        is_active = 1
+    ORDER BY send_time ASC
+  </select>
+
+
+  <!--更新已超时的验证码-->
+  <update id="updateExpireCode">
+    UPDATE send_record SET is_active=0 WHERE is_active = 1  AND id=#{id}
+  </update>
+
+  <!--根据手机号、验证码失效已过期的记录-->
+  <update id="updateExpirePhoneCode">
+    UPDATE send_record SET is_active=0 WHERE is_active = 1  AND phone=#{phone} AND code=#{code}
+  </update>
 </mapper>
 
 
