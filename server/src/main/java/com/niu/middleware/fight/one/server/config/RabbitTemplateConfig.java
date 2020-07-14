@@ -49,7 +49,7 @@ public class RabbitTemplateConfig {
         return factory;
     }
 
-    // 单一消费者实例
+    // 多实例消费者实例
     @Bean(name = "mutiListenerContainer")
     public SimpleRabbitListenerContainerFactory mutiListenerContainer() {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();

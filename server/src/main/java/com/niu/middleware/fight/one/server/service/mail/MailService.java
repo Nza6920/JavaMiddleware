@@ -27,7 +27,6 @@ public class MailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    //TODO:发送简单的邮件消息
     @Async("threadPoolTaskExecutor")
     public void sendSimpleEmail(final String subject, final String content, final String... tos) {
         try {
