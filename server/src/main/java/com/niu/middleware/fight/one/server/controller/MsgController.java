@@ -52,4 +52,36 @@ public class MsgController extends AbstractController {
 
         return response;
     }
+
+    // 发送短信
+    @RequestMapping("send2")
+    public BaseResponse sendCode2(@RequestParam String phone) {
+        if (StringUtils.isBlank(phone)) {
+            return new BaseResponse(StatusCode.InvalidParams);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(msgCodeService.getRandomCodeV2(phone));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+
+        return response;
+    }
+
+    // 验证短信验证码
+    @RequestMapping("validate2")
+    public BaseResponse validateCode2(@RequestParam String phone, @RequestParam String code) {
+        if (StringUtils.isBlank(phone) || StringUtils.isBlank(code)) {
+            return new BaseResponse(StatusCode.InvalidParams);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(msgCodeService.validateCodeV2(phone, code));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+
+        return response;
+    }
 }

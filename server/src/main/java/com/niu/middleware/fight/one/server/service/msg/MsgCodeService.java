@@ -3,6 +3,7 @@ package com.niu.middleware.fight.one.server.service.msg;
 import com.niu.middleware.fight.one.model.entity.SendRecord;
 import com.niu.middleware.fight.one.model.mapper.SendRecordMapper;
 import com.niu.middleware.fight.one.server.dto.SmsDto;
+import com.niu.middleware.fight.one.server.enums.Constant;
 import com.niu.middleware.fight.one.server.service.sms.SmsMessageService;
 import com.niu.middleware.fight.one.server.utils.RandomUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,10 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @Description: 短信验证码Service
@@ -58,10 +62,12 @@ public class MsgCodeService {
 
         SendRecord entity = new SendRecord(phone, code);
         entity.setSendTime(DateTime.now().toDate());
-        sendRecordMapper.insertSelective(entity);
+        int res = sendRecordMapper.insertSelective(entity);
 
-        // 调用短信api
-        mqSendSms(new SmsDto(phone, code));
+        if (res > 0) {
+            // 调用短信api
+            mqSendSms(new SmsDto(phone, code));
+        }
 
         return code;
     }
@@ -90,5 +96,49 @@ public class MsgCodeService {
                 return message;
             }
         });
+    }
+
+    // 获取短信验证码 - redis 的 key 过期失效 +定时任务调度
+    public String getRandomCodeV2(String phone) {
+
+        ValueOperations<String, String> ops = redisTemplate.opsForValue();
+
+        String key = Constant.RedisMsgCodeKey + phone;
+
+        // 查看缓存中是否有存在的key
+        if (redisTemplate.hasKey(key)) {
+            return ops.get(key);
+        }
+
+        String code = RandomUtil.randomMsgCode(4);
+
+        SendRecord entity = new SendRecord(phone, code);
+        entity.setSendTime(DateTime.now().toDate());
+        int res = sendRecordMapper.insertSelective(entity);
+
+        if (res > 0) {
+            // 调用短信api
+            mqSendSms(new SmsDto(phone, code));
+
+            // 往redis中存入验证码, 设置超时时间为30分钟
+//            ops.set(phone, code, 30L, TimeUnit.MINUTES);
+            ops.set(key, code, 1L, TimeUnit.MINUTES);
+
+        }
+
+        return code;
+    }
+
+    // 获取短信验证码 - redis 的 key 过期失效
+    public Boolean validateCodeV2(String phone, String code) {
+
+        ValueOperations<String, String> ops = redisTemplate.opsForValue();
+
+        String key = Constant.RedisMsgCodeKey + phone;
+
+        // 获取缓存中的code
+        String cacheCode = ops.get(key);
+
+        return StringUtils.equals(cacheCode, code);
     }
 }
