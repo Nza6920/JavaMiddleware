@@ -22,7 +22,7 @@ public class RandomUtil {
     }
 
 
-//    private static final Integer total=10;
+//    private static final Integer total=100;
 //
 //    //多线程压测
 //    static class CodePlayer extends Thread {
