@@ -39,8 +39,10 @@ public class RabbitConfig {
     @Bean(name = "singleListenerContainer")
     public SimpleRabbitListenerContainerFactory singleListenerContainer() {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-        factory.setConnectionFactory(connectionFactory);
+        factoryConfigurer.configure(factory, connectionFactory);
+//        factory.setConnectionFactory(connectionFactory); 同上
         factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setDefaultRequeueRejected(false);
         factory.setMessageConverter(new Jackson2JsonMessageConverter());
         factory.setConcurrentConsumers(1);
         factory.setMaxConcurrentConsumers(1);
@@ -55,13 +57,13 @@ public class RabbitConfig {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factoryConfigurer.configure(factory, connectionFactory);
         factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setDefaultRequeueRejected(false);
         factory.setMessageConverter(new Jackson2JsonMessageConverter());
         factory.setConcurrentConsumers(env.getProperty("spring.rabbitmq.listener.simple.concurrency", int.class));
         factory.setMaxConcurrentConsumers(env.getProperty("spring.rabbitmq.listener.simple.max-concurrency", int.class));
         factory.setPrefetchCount(env.getProperty("spring.rabbitmq.listener.simple.prefetch", int.class));
         return factory;
     }
-
 
     // rabbitmq 自定义注入模板操作组件
     @Bean
@@ -115,5 +117,20 @@ public class RabbitConfig {
     @Bean
     public Binding emailBinding() {
         return BindingBuilder.bind(emailQueue()).to(emailExchange()).with(env.getProperty("mq.email.routing.key"));
+    }
+
+    @Bean
+    public TopicExchange smsExchange() {
+        return new TopicExchange(env.getProperty("mq.sms.exchange"), true, false);
+    }
+
+    @Bean
+    public Queue smsQueue() {
+        return new Queue(env.getProperty("mq.sms.queue"), true);
+    }
+
+    @Bean
+    public Binding smsBinding() {
+        return BindingBuilder.bind(smsQueue()).to(smsExchange()).with(env.getProperty("mq.sms.routing.key"));
     }
 }
