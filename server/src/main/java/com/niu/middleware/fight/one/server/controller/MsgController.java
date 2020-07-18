@@ -84,4 +84,36 @@ public class MsgController extends AbstractController {
 
         return response;
     }
+
+    // 发送短信
+    @RequestMapping("send3")
+    public BaseResponse sendCode3(@RequestParam String phone) {
+        if (StringUtils.isBlank(phone)) {
+            return new BaseResponse(StatusCode.InvalidParams);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(msgCodeService.getRandomCodeV3(phone));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+
+        return response;
+    }
+
+    // 验证短信验证码
+    @RequestMapping("validate3")
+    public BaseResponse validateCode3(@RequestParam String phone, @RequestParam String code) {
+        if (StringUtils.isBlank(phone) || StringUtils.isBlank(code)) {
+            return new BaseResponse(StatusCode.InvalidParams);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(msgCodeService.validateCodeV3(phone, code));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+
+        return response;
+    }
 }

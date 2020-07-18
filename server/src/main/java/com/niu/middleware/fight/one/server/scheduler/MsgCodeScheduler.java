@@ -57,7 +57,7 @@ public class MsgCodeScheduler {
     }
 
     // redis  的 key 过期失效 - 定时任务执行
-    @Scheduled(cron = "0/30 * * * * ?")
+//    @Scheduled(cron = "0 */2 * * * ?")
     @Async("threadPoolTaskExecutor")
     public void schedulerCheckCode2() {
         try {
