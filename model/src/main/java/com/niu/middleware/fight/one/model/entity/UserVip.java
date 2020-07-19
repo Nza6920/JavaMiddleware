@@ -24,7 +24,7 @@ public class UserVip implements Serializable{
     @NotNull(message = "会员天数不能为空！")
     private Integer vipDay;
 
-    private Short isActive=1;
+    private Short isActive = 1;
 
     private Date vipTime;
 

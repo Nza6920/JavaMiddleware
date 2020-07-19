@@ -3,8 +3,6 @@ package com.niu.middleware.fight.one.server.service.msg;
 import com.niu.middleware.fight.one.model.mapper.SendRecordMapper;
 import com.niu.middleware.fight.one.server.enums.Constant;
 import com.niu.middleware.fight.one.server.service.common.CommonService;
-import com.yunpian.sdk.constant.Code;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.redisson.api.RMapCache;
@@ -50,29 +48,28 @@ public class RedissonMapCacheMsgCode implements ApplicationRunner, Ordered {
 
     // 监听mapCache里过期失效的验证码
     private void listenExpireCode() {
-        try {
-            RMapCache<String, String> mapCache = redissonClient.getMapCache(Constant.RedissonMsgCodeKey);
+        RMapCache<String, String> mapCache = redissonClient.getMapCache(Constant.RedissonMsgCodeKey);
 
-            mapCache.addListener(new EntryExpiredListener<String, String>() {
-                @SneakyThrows
-                @Override
-                public void onExpired(EntryEvent<String, String> entryEvent) {
-                    String phone = entryEvent.getKey();
-                    String msgCode = entryEvent.getValue();
+        mapCache.addListener(new EntryExpiredListener<String, String>() {
+            @Override
+            public void onExpired(EntryEvent<String, String> entryEvent) {
+                String phone = entryEvent.getKey();
+                String msgCode = entryEvent.getValue();
 
-                    log.info("---- 当前手机号: {}, 验证码: {} ----即将失效", phone, msgCode);
+                log.info("---- 当前手机号: {}, 验证码: {} ----即将失效", phone, msgCode);
 
-                    if (StringUtils.isNotBlank(phone) && StringUtils.isNotBlank(msgCode)) {
-                        int res = sendRecordMapper.updateExpirePhoneCode(phone, msgCode);
+                if (StringUtils.isNotBlank(phone) && StringUtils.isNotBlank(msgCode)) {
+                    int res = sendRecordMapper.updateExpirePhoneCode(phone, msgCode);
 
-                        if (res > 0) {
-                            commonService.recordLog(phone + "--" + msgCode, "mapcache监听验证码失效", "listenExpireCode");
+                    if (res > 0) {
+                        try {
+                            commonService.recordLog(phone + "--" + msgCode, "mapCache监听验证码失效", "listenExpireCode");
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            }
+        });
     }
 }
