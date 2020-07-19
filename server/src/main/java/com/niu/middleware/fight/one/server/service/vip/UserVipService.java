@@ -5,6 +5,8 @@ import com.niu.middleware.fight.one.model.mapper.UserVipMapper;
 import com.niu.middleware.fight.one.server.enums.Constant;
 import lombok.extern.slf4j.Slf4j;
 import org.joda.time.DateTime;
+import org.redisson.api.RBlockingQueue;
+import org.redisson.api.RDelayedQueue;
 import org.redisson.api.RMapCache;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +30,9 @@ public class UserVipService {
     @Autowired
     private RedissonClient redissonClient;
 
+    // 基于 redisson mapCache
     @Transactional(rollbackFor = Exception.class)
-    public void addVip(UserVip userVip) {
+    public void addVip1(UserVip userVip) {
 
         userVip.setVipTime(DateTime.now().toDate());
         int res = userVipMapper.insertSelective(userVip);
@@ -52,5 +55,35 @@ public class UserVipService {
                 mapCache.put(keySecond, userVip.getId(), secondTTL, TimeUnit.MINUTES);
             }
         }
+    }
+
+    // 基于 Redisson 的延时队列
+    public void addVip2(UserVip userVip) {
+
+        userVip.setVipTime(DateTime.now().toDate());
+        int res = userVipMapper.insertSelective(userVip);
+        // 充值成功之后
+        if (res > 0) {
+            // 获取 Blocking Queue
+            RBlockingQueue<String> blockingQueue = redissonClient.getBlockingQueue(Constant.RedissonUserVipQueue);
+
+            // 获取延时队列
+            RDelayedQueue<String> delayedQueue = redissonClient.getDelayedQueue(blockingQueue);
+
+            // 第一次提醒
+            String firstQueue = userVip.getId() + Constant.SplitCharUserVip + Constant.VipExpireFlg.First.getType();
+            long firstTTL = Long.parseLong(String.valueOf(userVip.getVipDay() - Constant.x2));
+            if (firstTTL > 0) {
+                delayedQueue.offer(firstQueue, firstTTL, TimeUnit.SECONDS);
+            }
+
+            // 第二次提醒
+            String secondQueue = userVip.getId() + Constant.SplitCharUserVip + Constant.VipExpireFlg.End.getType();
+            long secondTTL = Long.valueOf(userVip.getVipDay());
+            if (firstTTL > 0) {
+                delayedQueue.offer(secondQueue, secondTTL, TimeUnit.SECONDS);
+            }
+        }
+
     }
 }

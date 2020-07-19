@@ -4,7 +4,6 @@ import cn.hutool.core.util.StrUtil;
 import com.niu.middleware.fight.one.api.response.BaseResponse;
 import com.niu.middleware.fight.one.api.response.StatusCode;
 import com.niu.middleware.fight.one.model.entity.UserVip;
-import com.niu.middleware.fight.one.model.mapper.UserVipMapper;
 import com.niu.middleware.fight.one.server.service.vip.UserVipService;
 import com.niu.middleware.fight.one.server.utils.ValidatorUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -29,8 +28,9 @@ public class UserVipController {
     @Autowired
     private UserVipService userVipService;
 
+    // 基于 redisson mapCache
     @PostMapping("put1")
-    public BaseResponse put(@RequestBody @Validated UserVip userVip, BindingResult result) {
+    public BaseResponse put1(@RequestBody @Validated UserVip userVip, BindingResult result) {
         String checkRes = ValidatorUtil.checkResult(result);
         if (StrUtil.isNotBlank(checkRes)) {
             return new BaseResponse(StatusCode.InvalidParams.getCode(), checkRes);
@@ -40,7 +40,7 @@ public class UserVipController {
 
         try {
             // TODO: 2020/7/19
-            userVipService.addVip(userVip);
+            userVipService.addVip1(userVip);
         } catch (Exception e) {
             log.error("充值会员-发送异常: {}", e.fillInStackTrace());
             response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
@@ -49,4 +49,25 @@ public class UserVipController {
         return response;
     }
 
+
+    // 基于 Redisson 的延时队列
+    @PostMapping("put2")
+    public BaseResponse put2(@RequestBody @Validated UserVip userVip, BindingResult result) {
+        String checkRes = ValidatorUtil.checkResult(result);
+        if (StrUtil.isNotBlank(checkRes)) {
+            return new BaseResponse(StatusCode.InvalidParams.getCode(), checkRes);
+        }
+
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+
+        try {
+            // TODO: 2020/7/19
+            userVipService.addVip2(userVip);
+        } catch (Exception e) {
+            log.error("充值会员-发送异常: {}", e.fillInStackTrace());
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+
+        return response;
+    }
 }

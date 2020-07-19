@@ -7,25 +7,22 @@ import com.niu.middleware.fight.one.server.request.MailRequest;
 import com.niu.middleware.fight.one.server.service.mail.MailService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.redisson.api.RMapCache;
+import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RedissonClient;
-import org.redisson.api.map.event.EntryEvent;
-import org.redisson.api.map.event.EntryExpiredListener;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.Ordered;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * @Description: vip过期提醒 - 基于redisson - 监听 mapCache key 失效
+ * @Description: 用户会员到期 - 基于 redisson 的延迟队列
  * @Author nza
- * @Date 2020/7/18
+ * @Date 2020/7/19
  **/
-@Slf4j
 @Component
-public class RedissonMapCacheUserVip implements ApplicationRunner, Ordered {
+@Slf4j
+public class UserVipRedissonQueueListener {
 
     @Autowired
     private RedissonClient redissonClient;
@@ -34,45 +31,29 @@ public class RedissonMapCacheUserVip implements ApplicationRunner, Ordered {
     private UserVipMapper userVipMapper;
 
     @Autowired
-    private MailService mailService;
-
-    @Autowired
     private Environment env;
 
-    // 应用在启动以及运行期间, 可以不间断的执行一些我们自定义的服务逻辑
-    @Override
-    public void run(ApplicationArguments args) throws Exception {
-        log.info("-----不间断的执行-------");
+    @Autowired
+    private MailService mailService;
 
-        this.listenUserVip();
-    }
+    @Async("threadPoolTaskExecutor")
+    @Scheduled(cron = "0/5 * * * * ?")
+    public void manageExpireVip() {
 
-    @Override
-    public int getOrder() {
-        return 1;
-    }
+        RBlockingQueue<String> blockingQueue = redissonClient.getBlockingQueue(Constant.RedissonUserVipQueue);
 
-    // 监听用户会员过期的数据 - 1 到期前n天的提醒 2 到期后的提醒 - 需要给相应的用户发送通知(邮件), 告知会员即将过期
-    private void listenUserVip() {
-        RMapCache<Object, Object> mapCache = redissonClient.getMapCache(Constant.RedissonUserVIPKey);
+        if (blockingQueue != null && !blockingQueue.isEmpty()) {
+            String element = blockingQueue.poll();
+            log.info("监听到 redisson 延迟队列消息: {}", element);
 
-        mapCache.addListener((EntryExpiredListener<String, Integer>) event -> {
-            log.info("---监听到用户会员过期数据: key = {} value = {}", event.getKey(), event.getValue());
+            if (StringUtils.isNotEmpty(element)) {
+                String[] arr = StringUtils.split(element, Constant.SplitCharUserVip);
 
-            // 充值id + 类型
-            String key = String.valueOf(event.getKey());
-            // 充值组件
-            String value = String.valueOf(event.getValue());
-
-            if (StringUtils.isNotBlank(key) && StringUtils.isNotBlank(value)) {
-                String[] split = StringUtils.split(key, Constant.SplitCharUserVip);
-                // 区分提醒类型
-                Integer type = Integer.valueOf(split[1]);
-                Integer id = Integer.valueOf(value);
+                Integer id = Integer.valueOf(arr[0]);
+                Integer type = Integer.valueOf(arr[1]);
 
                 UserVip vip = userVipMapper.selectByPrimaryKey(id);
                 if (vip != null && vip.getIsActive() == 1 && StringUtils.isNotBlank(vip.getEmail())) {
-
                     String subject = StringUtils.EMPTY;
                     String content = StringUtils.EMPTY;
 
@@ -83,6 +64,7 @@ public class RedissonMapCacheUserVip implements ApplicationRunner, Ordered {
                         subject = env.getProperty("vip.expire.first.subject");
                         content = env.getProperty("vip.expire.first.content");
                     } else {
+                        log.info("redisson 延迟队列第二次提醒");
                         int res = userVipMapper.updateExpireVip(vip.getId());
                         if (res > 0) {
                             subject = env.getProperty("vip.expire.end.subject");
@@ -94,13 +76,13 @@ public class RedissonMapCacheUserVip implements ApplicationRunner, Ordered {
                     sendEmail(mailRequest, vip, subject, content);
                 }
             }
-        });
-
+        }
     }
 
     // 发送邮件
     private void sendEmail(MailRequest mailRequest, UserVip vip, String subject, String content) {
         if (StringUtils.isNotEmpty(subject) && StringUtils.isNotEmpty(content)) {
+            log.info("redisson 延迟队列发送邮件");
             mailRequest.setSubject(subject);
             if (StringUtils.isNotBlank(content)) {
                 mailRequest.setContent(String.format(content, vip.getPhone()));

@@ -61,13 +61,13 @@ public class Constant {
     //vip会员过期前 x 天/小时/分钟/秒 进行提醒...; 即 ttl=vipDay - x;
     public static final Integer x = 1;
 
+    public static final Integer x2 = 10;
 
     //用户会员到期前的多次提醒的标识
     public enum VipExpireFlg {
 
         First(1),
-        End(2),
-        ;
+        End(2);
 
         private Integer type;
 
