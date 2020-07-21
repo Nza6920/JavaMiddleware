@@ -26,4 +26,10 @@ Build/
 */Binaries/
 Binaries/
 
+/server/target/
+
+/model/target/
+
+/api/target/
+
 *.properties

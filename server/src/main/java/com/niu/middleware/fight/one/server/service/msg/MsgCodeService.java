@@ -8,6 +8,8 @@ import com.niu.middleware.fight.one.server.utils.RandomUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
+import org.redisson.api.RMapCache;
+import org.redisson.api.RedissonClient;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -46,6 +48,9 @@ public class MsgCodeService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+    @Autowired
+    private RedissonClient redissonClient;
+
     // 获取短信验证码-sql+定时任务调度
     public String getRandomCodeV1(String phone) {
 
@@ -76,7 +81,8 @@ public class MsgCodeService {
     }
 
     // 将短信消息塞到mq server里面去
-    private void mqSendSms(SmsDto smsDto) {
+    public void mqSendSms(SmsDto smsDto) {
+        // 设置路由
         rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
         rabbitTemplate.setExchange(env.getProperty("mq.sms.exchange"));
         rabbitTemplate.convertAndSend(env.getProperty("mq.sms.routing.key"), smsDto, new MessagePostProcessor() {
@@ -91,6 +97,19 @@ public class MsgCodeService {
                 },
                 new CorrelationData(smsDto.getPhone())
         );
+    }
+
+    // 获取短信验证码 - redis 的 key 过期失效
+    public Boolean validateCodeV2(String phone, String code) {
+
+        ValueOperations<String, String> ops = redisTemplate.opsForValue();
+
+        String key = Constant.RedisMsgCodeKey + phone;
+
+        // 获取缓存中的code
+        String cacheCode = ops.get(key);
+
+        return StringUtils.equals(cacheCode, code);
     }
 
     // 获取短信验证码 - redis 的 key 过期失效 +定时任务调度
@@ -112,26 +131,49 @@ public class MsgCodeService {
         int res = sendRecordMapper.insertSelective(entity);
 
         if (res > 0) {
-            // 往redis中存入验证码, 设置超时时间为30分钟
-//            ops.set(phone, code, 30L, TimeUnit.MINUTES);
-            ops.set(key, code, 1L, TimeUnit.MINUTES);
-
             // 调用短信api
             mqSendSms(new SmsDto(phone, code));
+
+            ops.set(key, code, 1L, TimeUnit.MINUTES);
+        }
+
+        return code;
+    }
+
+    // 获取短信验证码 - redis 的 key 过期失效 +定时任务调度
+    public String getRandomCodeV3(String phone) {
+
+        RMapCache<String, String> mapCache = redissonClient.getMapCache(Constant.RedissonMsgCodeKey);
+
+        // 查看缓存中是否有存在的key
+        String oldCode = mapCache.get(phone);
+        if (StringUtils.isNotBlank(oldCode)) {
+            return oldCode;
+        }
+
+        String code = RandomUtil.randomMsgCode(4);
+
+        SendRecord entity = new SendRecord(phone, code);
+        entity.setSendTime(DateTime.now().toDate());
+        int res = sendRecordMapper.insertSelective(entity);
+
+        if (res > 0) {
+            // 调用短信api
+            mqSendSms(new SmsDto(phone, code));
+
+            mapCache.put(phone, code, 1L, TimeUnit.MINUTES);
         }
 
         return code;
     }
 
     // 获取短信验证码 - redis 的 key 过期失效
-    public Boolean validateCodeV2(String phone, String code) {
+    public Boolean validateCodeV3(String phone, String code) {
 
-        ValueOperations<String, String> ops = redisTemplate.opsForValue();
-
-        String key = Constant.RedisMsgCodeKey + phone;
+        RMapCache<String, String> mapCache = redissonClient.getMapCache(Constant.RedissonMsgCodeKey);
 
         // 获取缓存中的code
-        String cacheCode = ops.get(key);
+        String cacheCode = mapCache.get(phone);
 
         return StringUtils.equals(cacheCode, code);
     }
