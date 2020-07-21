@@ -3,6 +3,7 @@ package com.niu.middleware.fight.one.server.service.common;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niu.middleware.fight.one.model.entity.SysLog;
 import com.niu.middleware.fight.one.server.enums.Constant;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
  * @Date 2020/7/14
  **/
 @Service
+@Slf4j
 public class CommonService {
 
     @Autowired
