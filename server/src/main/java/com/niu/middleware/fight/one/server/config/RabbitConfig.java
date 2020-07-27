@@ -47,7 +47,7 @@ public class RabbitConfig {
         factory.setConcurrentConsumers(1);
         factory.setMaxConcurrentConsumers(1);
         factory.setPrefetchCount(1);
-        factory.setTxSize(1);
+        factory.setBatchSize(1);
         return factory;
     }
 

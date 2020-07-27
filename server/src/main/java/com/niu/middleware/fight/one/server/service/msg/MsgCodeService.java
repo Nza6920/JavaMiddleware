@@ -15,6 +15,7 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.AbstractJavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -81,22 +82,21 @@ public class MsgCodeService {
 
     // 将短信消息塞到mq server里面去
     public void mqSendSms(SmsDto smsDto) {
-        // 设置交换机
-        rabbitTemplate.setExchange(env.getProperty("mq.sms.exchange"));
         // 设置路由
-        rabbitTemplate.setRoutingKey(env.getProperty("mq.sms.routing.key"));
         rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
-
-        rabbitTemplate.convertAndSend(smsDto, new MessagePostProcessor() {
-            @Override
-            public Message postProcessMessage(Message message) throws AmqpException {
-                MessageProperties properties = message.getMessageProperties();
-                // 设置消息持久化与消息头
-                properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-                properties.setHeader(AbstractJavaTypeMapper.DEFAULT_CONTENT_CLASSID_FIELD_NAME, SmsDto.class);
-                return message;
-            }
-        });
+        rabbitTemplate.setExchange(env.getProperty("mq.sms.exchange"));
+        rabbitTemplate.convertAndSend(env.getProperty("mq.sms.routing.key"), smsDto, new MessagePostProcessor() {
+                    @Override
+                    public Message postProcessMessage(Message message) throws AmqpException {
+                        MessageProperties properties = message.getMessageProperties();
+                        // 设置消息持久化与消息头
+                        properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
+                        properties.setHeader(AbstractJavaTypeMapper.DEFAULT_CONTENT_CLASSID_FIELD_NAME, SmsDto.class);
+                        return message;
+                    }
+                },
+                new CorrelationData(smsDto.getPhone())
+        );
     }
 
     // 获取短信验证码 - redis 的 key 过期失效
@@ -144,7 +144,6 @@ public class MsgCodeService {
     public String getRandomCodeV3(String phone) {
 
         RMapCache<String, String> mapCache = redissonClient.getMapCache(Constant.RedissonMsgCodeKey);
-
 
         // 查看缓存中是否有存在的key
         String oldCode = mapCache.get(phone);
