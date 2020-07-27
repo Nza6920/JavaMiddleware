@@ -53,4 +53,21 @@ public class PraiseController extends AbstractController {
 
         return response;
     }
+
+    // 取消点赞文章
+    @PostMapping(value = "cancel")
+    public BaseResponse praiseCancel(@RequestBody @Validated PraiseDto dto, BindingResult result) {
+        String checkRes = ValidatorUtil.checkResult(result);
+        if (StrUtil.isNotBlank(checkRes)) {
+            return new BaseResponse(StatusCode.InvalidParams.getCode(), checkRes);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(praiseService.praiseCancel(dto));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+
+        return response;
+    }
 }
