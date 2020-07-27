@@ -15,6 +15,161 @@
   <sql id="Base_Column_List" >
     id, title, content, user_id, scan_total, praise_total, is_active, create_time, update_time
   </sql>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Integer" >
+    select 
+    <include refid="Base_Column_List" />
+    from article
+    where id = #{id,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer" >
+    delete from article
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" parameterType="com.niu.middleware.fight.one.model.entity.Article" >
+    insert into article (id, title, content, 
+      user_id, scan_total, praise_total, 
+      is_active, create_time, update_time
+      )
+    values (#{id,jdbcType=INTEGER}, #{title,jdbcType=VARCHAR}, #{content,jdbcType=VARCHAR}, 
+      #{userId,jdbcType=INTEGER}, #{scanTotal,jdbcType=INTEGER}, #{praiseTotal,jdbcType=INTEGER}, 
+      #{isActive,jdbcType=TINYINT}, #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}
+      )
+  </insert>
+  <insert id="insertSelective" parameterType="com.niu.middleware.fight.one.model.entity.Article" >
+    insert into article
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        id,
+      </if>
+      <if test="title != null" >
+        title,
+      </if>
+      <if test="content != null" >
+        content,
+      </if>
+      <if test="userId != null" >
+        user_id,
+      </if>
+      <if test="scanTotal != null" >
+        scan_total,
+      </if>
+      <if test="praiseTotal != null" >
+        praise_total,
+      </if>
+      <if test="isActive != null" >
+        is_active,
+      </if>
+      <if test="createTime != null" >
+        create_time,
+      </if>
+      <if test="updateTime != null" >
+        update_time,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        #{id,jdbcType=INTEGER},
+      </if>
+      <if test="title != null" >
+        #{title,jdbcType=VARCHAR},
+      </if>
+      <if test="content != null" >
+        #{content,jdbcType=VARCHAR},
+      </if>
+      <if test="userId != null" >
+        #{userId,jdbcType=INTEGER},
+      </if>
+      <if test="scanTotal != null" >
+        #{scanTotal,jdbcType=INTEGER},
+      </if>
+      <if test="praiseTotal != null" >
+        #{praiseTotal,jdbcType=INTEGER},
+      </if>
+      <if test="isActive != null" >
+        #{isActive,jdbcType=TINYINT},
+      </if>
+      <if test="createTime != null" >
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateTime != null" >
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.niu.middleware.fight.one.model.entity.Article" >
+    update article
+    <set >
+      <if test="title != null" >
+        title = #{title,jdbcType=VARCHAR},
+      </if>
+      <if test="content != null" >
+        content = #{content,jdbcType=VARCHAR},
+      </if>
+      <if test="userId != null" >
+        user_id = #{userId,jdbcType=INTEGER},
+      </if>
+      <if test="scanTotal != null" >
+        scan_total = #{scanTotal,jdbcType=INTEGER},
+      </if>
+      <if test="praiseTotal != null" >
+        praise_total = #{praiseTotal,jdbcType=INTEGER},
+      </if>
+      <if test="isActive != null" >
+        is_active = #{isActive,jdbcType=TINYINT},
+      </if>
+      <if test="createTime != null" >
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateTime != null" >
+        update_time = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.niu.middleware.fight.one.model.entity.Article" >
+    update article
+    set title = #{title,jdbcType=VARCHAR},
+      content = #{content,jdbcType=VARCHAR},
+      user_id = #{userId,jdbcType=INTEGER},
+      scan_total = #{scanTotal,jdbcType=INTEGER},
+      praise_total = #{praiseTotal,jdbcType=INTEGER},
+      is_active = #{isActive,jdbcType=TINYINT},
+      create_time = #{createTime,jdbcType=TIMESTAMP},
+      update_time = #{updateTime,jdbcType=TIMESTAMP}
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+
+
+  <select id="selectAll" resultType="com.niu.middleware.fight.one.model.entity.Article">
+    SELECT
+        a.*,b.`name` AS userName
+    FROM
+        article AS a LEFT JOIN `user` AS b ON b.id=a.user_id
+    WHERE
+        a.is_active = 1
+    ORDER BY
+        a.create_time DESC
+  </select>
+
+
+  <update id="updatePraiseTotal">
+    update article
+    set
+      praise_total = praise_total + #{flag} ,
+      update_time = now()
+    where is_active=1 and id = #{articleId}
+  </update>
+
+
+  <select id="selectByPK" resultType="com.niu.middleware.fight.one.model.entity.Article">
+    SELECT
+        a.*,b.`name` AS userName
+    FROM
+        article AS a LEFT JOIN `user` AS b ON b.id=a.user_id
+    WHERE
+        a.is_active = 1 AND a.id=#{articleId}
+  </select>
+
 </mapper>
 
 
