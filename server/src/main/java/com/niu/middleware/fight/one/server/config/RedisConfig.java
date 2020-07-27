@@ -37,7 +37,7 @@ public class RedisConfig {
         redisTemplate.setHashKeySerializer(new StringRedisSerializer());
 
         // 开启事务支持
-        redisTemplate.setEnableTransactionSupport(true);
+//        redisTemplate.setEnableTransactionSupport(true);
 
         redisTemplate.afterPropertiesSet();
 
@@ -49,6 +49,7 @@ public class RedisConfig {
 
         StringRedisTemplate stringRedisTemplate = new StringRedisTemplate(redisConnectionFactory);
 
+        // 开启事务支持
         stringRedisTemplate.setEnableTransactionSupport(true);
 
         return stringRedisTemplate;

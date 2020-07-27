@@ -1,12 +1,16 @@
 package com.niu.middleware.fight.one.server.controller;
 
+import cn.hutool.core.util.StrUtil;
 import com.niu.middleware.fight.one.api.response.BaseResponse;
 import com.niu.middleware.fight.one.api.response.StatusCode;
+import com.niu.middleware.fight.one.model.dto.PraiseDto;
 import com.niu.middleware.fight.one.server.service.praise.PraiseService;
+import com.niu.middleware.fight.one.server.utils.ValidatorUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * @Description: 点赞控制器
@@ -33,4 +37,20 @@ public class PraiseController extends AbstractController {
         return response;
     }
 
+    // 点赞文章
+    @PostMapping(value = "on")
+    public BaseResponse praiseOn(@RequestBody @Validated PraiseDto dto, BindingResult result) {
+        String checkRes = ValidatorUtil.checkResult(result);
+        if (StrUtil.isNotBlank(checkRes)) {
+            return new BaseResponse(StatusCode.InvalidParams.getCode(), checkRes);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(praiseService.praiseOn(dto));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+
+        return response;
+    }
 }

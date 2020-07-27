@@ -35,13 +35,13 @@ public class Constant {
     public static final String RedisCacheBeatLockKey = "SpringBootRedis:LockKey:";
 
 
-    public static final String RedisArticlePraiseUser = "SpringBootRedis:Article:Praise:User:V6:";
+    public static final String RedisArticlePraiseUser = "SpringBootRedis:Article:Praise:User:V3:";
 
-    public static final String RedisArticlePraiseHashKey = "SpringBootRedis:Hash:Article:Praise:V6";
+    public static final String RedisArticlePraiseHashKey = "SpringBootRedis:Hash:Article:Praise:V3";
 
-    public static final String RedisArticlePraiseSortKey = "SpringBootRedis:Hash:Article:Sort:V6";
+    public static final String RedisArticlePraiseSortKey = "SpringBootRedis:Hash:Article:Sort:V3";
 
-    public static final String RedisArticleUserPraiseKey = "SpringBootRedis:Hash:Article:User:Praise:V6";
+    public static final String RedisArticleUserPraiseKey = "SpringBootRedis:Hash:Article:User:Praise:V3";
 
 
     public static final String RedisTopicNameEmail = "SpringBootRedisTopicEmailInfo";
