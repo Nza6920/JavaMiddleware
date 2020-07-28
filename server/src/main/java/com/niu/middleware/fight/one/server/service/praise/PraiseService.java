@@ -1,9 +1,12 @@
 package com.niu.middleware.fight.one.server.service.praise;
 
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.util.StrUtil;
 import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.niu.middleware.fight.one.model.dto.ArticlePraiseRankDto;
 import com.niu.middleware.fight.one.model.dto.PraiseDto;
 import com.niu.middleware.fight.one.model.entity.Article;
 import com.niu.middleware.fight.one.model.entity.ArticlePraise;
@@ -12,15 +15,18 @@ import com.niu.middleware.fight.one.model.mapper.ArticlePraiseMapper;
 import com.niu.middleware.fight.one.model.mapper.UserMapper;
 import com.niu.middleware.fight.one.server.enums.Constant;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * @Description: 点赞业务类
@@ -87,6 +93,7 @@ public class PraiseService {
         praiseHash.put(Constant.RedisArticlePraiseHashKey, dto.getArticleId().toString(), uIds);
 
         // 缓存点赞排行榜
+        cachePraiseRank(dto, uIds.size());
 
         // 缓存用户的点赞过的历史文章
     }
@@ -129,12 +136,16 @@ public class PraiseService {
             uIds.remove(dto.getUserId());
             praiseHash.put(Constant.RedisArticlePraiseHashKey, dto.getArticleId().toString(), uIds);
         }
+
+        // 缓存点赞排行榜
+        cachePraiseRank(dto, uIds.size());
     }
 
     // 获取文章详情-点赞过的用户列表-排行榜
     public Map<String, Object> getArticleInfo(Integer articleId, Integer currUserId) {
 
         Map<String, Object> resMap = Maps.newHashMap();
+        ZSetOperations<String, String> zSetOperations = redisTemplate.opsForZSet();
 
         // 文章本身的信息
         Article article = articleMapper.selectByPK(articleId);
@@ -146,8 +157,51 @@ public class PraiseService {
         if (uIds != null && !uIds.isEmpty()) {
             String ids = Joiner.on(",").join(uIds);
             resMap.put("userNames", userMapper.selectNamesById(ids));
+            
+            // 当前用户是否点赞过当前文章
+            boolean isLike = uIds.contains(currUserId);
+            resMap.put("isLike", isLike);
         }
 
+        // 获取点赞排行榜
+        Long total = zSetOperations.size(Constant.RedisArticlePraiseSortKey);
+        Set<String> set = zSetOperations.reverseRange(Constant.RedisArticlePraiseSortKey, 0L, total);
+
+        List<ArticlePraiseRankDto> ranks = Lists.newArrayList();
+
+        if (set != null && !set.isEmpty()) {
+            set.forEach(item -> {
+                Double score = zSetOperations.score(Constant.RedisArticlePraiseSortKey, item);
+                if (score > 0) {
+                    Integer pos = StringUtils.indexOf(item, "-");
+                    if (pos > 0) {
+                        String id = StringUtils.substring(item, 0, pos);
+                        String title = StringUtils.substring(item, pos + 1);
+
+                        ArticlePraiseRankDto articlePraiseRankDto = new ArticlePraiseRankDto(id, title, score.toString(), score);
+                        ranks.add(articlePraiseRankDto);
+                    }
+                }
+
+            });
+        }
+
+        resMap.put("ranks", ranks);
+
         return resMap;
+    }
+
+
+    // 缓存点赞排行榜(SortedSet;ZSet)
+    private void cachePraiseRank(final PraiseDto dto, final Integer total) {
+
+        String value = dto.getArticleId() + "-" + dto.getTitle();
+
+        ZSetOperations<String, String> zSetOperations = redisTemplate.opsForZSet();
+
+        // 删除旧的值
+        zSetOperations.remove(Constant.RedisArticlePraiseSortKey, value);
+        // 塞入文章对应的点赞数据
+        zSetOperations.add(Constant.RedisArticlePraiseSortKey, value, total.doubleValue());
     }
 }
