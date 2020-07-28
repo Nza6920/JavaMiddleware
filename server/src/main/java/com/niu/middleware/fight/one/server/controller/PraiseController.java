@@ -7,7 +7,6 @@ import com.niu.middleware.fight.one.model.dto.PraiseDto;
 import com.niu.middleware.fight.one.server.service.praise.PraiseService;
 import com.niu.middleware.fight.one.server.utils.ValidatorUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -80,6 +79,21 @@ public class PraiseController extends AbstractController {
         BaseResponse response = new BaseResponse(StatusCode.Success);
         try {
             response.setData(praiseService.getArticleInfo(articleId, currUserId));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+        return response;
+    }
+
+    // 获取用户点赞过的历史文章-用户详情
+    @GetMapping("user/articles")
+    public BaseResponse userArticles(@RequestParam Integer currUserId) {
+        if (currUserId == null || currUserId <= 0) {
+            return new BaseResponse(StatusCode.Success.InvalidParams);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(praiseService.getUserArticles(currUserId));
         } catch (Exception e) {
             response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
         }

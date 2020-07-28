@@ -1,7 +1,6 @@
 package com.niu.middleware.fight.one.server.service.praise;
 
 import cn.hutool.core.date.DateTime;
-import cn.hutool.core.util.StrUtil;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -26,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * @Description: 点赞业务类
@@ -96,6 +94,8 @@ public class PraiseService {
         cachePraiseRank(dto, uIds.size());
 
         // 缓存用户的点赞过的历史文章
+        cachePraiseArticle(dto, true);
+
     }
 
     // 取消点赞
@@ -139,6 +139,9 @@ public class PraiseService {
 
         // 缓存点赞排行榜
         cachePraiseRank(dto, uIds.size());
+
+        // 缓存用户的点赞过的历史文章
+        cachePraiseArticle(dto, false);
     }
 
     // 获取文章详情-点赞过的用户列表-排行榜
@@ -157,7 +160,7 @@ public class PraiseService {
         if (uIds != null && !uIds.isEmpty()) {
             String ids = Joiner.on(",").join(uIds);
             resMap.put("userNames", userMapper.selectNamesById(ids));
-            
+
             // 当前用户是否点赞过当前文章
             boolean isLike = uIds.contains(currUserId);
             resMap.put("isLike", isLike);
@@ -203,5 +206,40 @@ public class PraiseService {
         zSetOperations.remove(Constant.RedisArticlePraiseSortKey, value);
         // 塞入文章对应的点赞数据
         zSetOperations.add(Constant.RedisArticlePraiseSortKey, value, total.doubleValue());
+    }
+
+    // 获取用户点赞过的历史文章
+    public Map<String, Object> getUserArticles(Integer currUserId) {
+        Map<String, Object> resMap = Maps.newHashMap();
+        HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();
+        List<PraiseDto> praiseArticles = Lists.newArrayList();
+
+        // 用户详情
+        resMap.put("userInfo", userMapper.selectByPrimaryKey(currUserId));
+
+        // 用户点赞过的历史文章
+        Map<String, String> entries = hashOperations.entries(Constant.RedisArticleUserPraiseKey);
+        entries.forEach((k, v) -> {
+            String[] split = StringUtils.split(k, "-");
+            if (StringUtils.isNotEmpty(v)) {
+                if (StringUtils.equals(split[0], currUserId.toString())) {
+                    praiseArticles.add(new PraiseDto(currUserId, Integer.valueOf(split[1]), v));
+                }
+            }
+        });
+        resMap.put("praiseArticle", praiseArticles);
+        return resMap;
+    }
+
+    // 缓存用户点赞过的文章
+    // key 标志符 field 用户id-文章id value-文章标题
+    private void cachePraiseArticle(final PraiseDto dto, Boolean isOn) {
+        HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();
+        final String field = dto.getUserId() + "-" + dto.getArticleId();
+        if (isOn) {
+            hashOperations.put(Constant.RedisArticleUserPraiseKey, field, dto.getTitle());
+        } else {
+            hashOperations.put(Constant.RedisArticleUserPraiseKey, field, "");
+        }
     }
 }
