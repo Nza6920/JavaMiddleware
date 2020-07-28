@@ -70,4 +70,19 @@ public class PraiseController extends AbstractController {
 
         return response;
     }
+
+    // 获取文章详情
+    @GetMapping("info")
+    public BaseResponse articleInfo(@RequestParam Integer articleId, @RequestParam Integer currUserId) {
+        if (articleId == null || articleId <= 0) {
+            return new BaseResponse(StatusCode.Success.InvalidParams);
+        }
+        BaseResponse response = new BaseResponse(StatusCode.Success);
+        try {
+            response.setData(praiseService.getArticleInfo(articleId, currUserId));
+        } catch (Exception e) {
+            response = new BaseResponse(StatusCode.Fail.getCode(), e.getMessage());
+        }
+        return response;
+    }
 }

@@ -1,12 +1,15 @@
 package com.niu.middleware.fight.one.server.service.praise;
 
 import cn.hutool.core.date.DateTime;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.niu.middleware.fight.one.model.dto.PraiseDto;
 import com.niu.middleware.fight.one.model.entity.Article;
 import com.niu.middleware.fight.one.model.entity.ArticlePraise;
 import com.niu.middleware.fight.one.model.mapper.ArticleMapper;
 import com.niu.middleware.fight.one.model.mapper.ArticlePraiseMapper;
+import com.niu.middleware.fight.one.model.mapper.UserMapper;
 import com.niu.middleware.fight.one.server.enums.Constant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -35,6 +39,9 @@ public class PraiseService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private UserMapper userMapper;
 
     // 获取文章列表
     public List<Article> getAll() throws Exception {
@@ -122,5 +129,25 @@ public class PraiseService {
             uIds.remove(dto.getUserId());
             praiseHash.put(Constant.RedisArticlePraiseHashKey, dto.getArticleId().toString(), uIds);
         }
+    }
+
+    // 获取文章详情-点赞过的用户列表-排行榜
+    public Map<String, Object> getArticleInfo(Integer articleId, Integer currUserId) {
+
+        Map<String, Object> resMap = Maps.newHashMap();
+
+        // 文章本身的信息
+        Article article = articleMapper.selectByPK(articleId);
+        resMap.put("articleInfo", article);
+
+        // 获取点赞过当前文章的用户列表 ~ 需要获取用户的昵称
+        HashOperations<String, String, Set<Integer>> praiseHash = redisTemplate.opsForHash();
+        Set<Integer> uIds = praiseHash.get(Constant.RedisArticlePraiseHashKey, articleId.toString());
+        if (uIds != null && !uIds.isEmpty()) {
+            String ids = Joiner.on(",").join(uIds);
+            resMap.put("userNames", userMapper.selectNamesById(ids));
+        }
+
+        return resMap;
     }
 }
